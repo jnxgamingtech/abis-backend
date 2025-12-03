@@ -12,7 +12,7 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/abisdb';
 // middleware
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://abis-frontend.onrender.com', 'https://abis-backend.onrender.com']
+    ? ['https://abis-frontend.onrender.com', 'https://abis-backend.onrender.com', 'https://abis-three.vercel.app', 'https://abis-frontend.vercel.app']
     : '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
