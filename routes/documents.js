@@ -38,9 +38,12 @@ router.post('/', async (req, res) => {
     const trackingNumber = data.trackingNumber || `ABIS-${Date.now()}-${nanoid(6)}`;
     const pickupCode = data.pickupCode || nanoid(6).toUpperCase();
 
-    // Merge all form fields including purpose, pickup status, etc into formData
+    // Merge all form fields including contact info, purpose, pickup status, etc into formData
     const formData = {
       ...data.formFields,
+      phone: data.phone || data.contactPhone || '',
+      phone2: data.phone2 || '',
+      email: data.email || data.contactEmail || '',
       purpose: data.purpose || '',
       pickup: data.pickup || false,
     };

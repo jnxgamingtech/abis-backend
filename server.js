@@ -38,6 +38,7 @@ app.use('/api/documents', require('./routes/documents'));
 app.post('/api/recognize-image', require('./routes/recognize'));
 app.use('/api/blotter', require('./routes/blotter'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/certificates', require('./routes/certificates'));
 
 app.get('/', (req, res) => res.json({ message: 'ABIS backend running' }));
 

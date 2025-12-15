@@ -32,8 +32,8 @@ cloudinary.config({
   secure: true
 });
 
-// create blotter report (public)
-router.post('/', upload.array('attachments', 3), async (req, res) => {
+// create blotter report (admin only)
+router.post('/', adminKeyMiddleware, upload.array('attachments', 3), async (req, res) => {
   try {
     const { title, description, reporterName, reporterContact, incidentDate } = req.body;
 
@@ -135,48 +135,18 @@ router.get('/pending', adminKeyMiddleware, async (req, res) => {
   }
 });
 
-// list blotters
-// public redacted list: safe for community display
-router.get('/', async (req, res) => {
+// list blotters (admin only)
+router.get('/', adminKeyMiddleware, async (req, res) => {
   try {
-    // Only return approved/published blotters for public feed
-    const list = await Blotter.find({ status: 'published' }).sort({ createdAt: -1 }).limit(1000);
-
-    const publicList = list.map(b => ({
-      id: b._id,
-      title: b.title,
-      shortDescription: (b.description || '').slice(0, 180),
-      incidentDate: b.incidentDate,
-      status: b.status,
-      createdAt: b.createdAt,
-      // include reporter info only if the reporter allowed public disclosure
-      reporterName: b.showReporter ? b.reporterName : undefined,
-      reporterContact: b.showReporter ? b.reporterContact : undefined,
-      // attach count for quick view
-      attachmentsCount: (b.attachments || []).length
-    }));
-
-    res.json(publicList);
+    const list = await Blotter.find({}).sort({ createdAt: -1 }).limit(1000);
+    res.json(list);
   } catch (err) {
     console.error('[blotter.list] error', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// public lookup by public token (returns only non-sensitive public fields)
-router.get('/by-token/:token', async (req, res) => {
-  try {
-    const token = req.params.token;
-    const b = await Blotter.findOne({ publicToken: token });
-    if (!b) return res.status(404).json({ error: 'Not found' });
-
-    // Return only public info
-    return res.json({ publicToken: b.publicToken, status: b.status, createdAt: b.createdAt });
-  } catch (err) {
-    console.error('[blotter.by-token] error', err);
-    res.status(500).json({ error: err.message });
-  }
-});
+// NOTE: public token lookup removed — blotter tracking and public tokens are disabled for public users
 
 // get one
 // Get blotter detail. If provided ?token=PUBLIC_TOKEN or x-admin-key header, return full details.
