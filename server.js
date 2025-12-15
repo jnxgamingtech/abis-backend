@@ -10,15 +10,19 @@ const PORT = process.env.PORT || 8000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/abisdb';
 
 // middleware
+// Allow local frontend during development and accept custom headers used by the app.
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
+  origin: process.env.NODE_ENV === 'production'
     ? ['https://abis-frontend.onrender.com', 'https://abis-backend.onrender.com', 'https://abis-three.vercel.app', 'https://abis-frontend.vercel.app']
-    : '*',
+    : ['http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key', 'x-public-token'],
+  exposedHeaders: ['Content-Disposition']
 };
 app.use(cors(corsOptions));
+// respond to preflight requests for all routes
+app.options('*', cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -35,10 +39,11 @@ mongoose.connect(MONGO_URI, {
 
 // routes
 app.use('/api/documents', require('./routes/documents'));
-app.post('/api/recognize-image', require('./routes/recognize'));
+app.use('/api/recognize-image', require('./routes/recognize'));
 app.use('/api/blotter', require('./routes/blotter'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/certificates', require('./routes/certificates'));
+app.use('/api/settings', require('./routes/settings'));
 
 app.get('/', (req, res) => res.json({ message: 'ABIS backend running' }));
 

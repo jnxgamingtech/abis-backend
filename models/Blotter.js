@@ -31,6 +31,21 @@ const BlotterSchema = new Schema({
   // NEW: Allow admin to control if reporter info is shown publicly
   showReporter: { type: Boolean, default: false },
   
+  // Payment system
+  paymentMethod: { type: String, default: 'gcash' }, // 'gcash', 'cash', etc.
+  paymentStatus: { type: String, enum: ['pending', 'paid'], default: 'pending' },
+  paymentProofUrl: { type: String }, // URL to payment proof screenshot
+  
+  // Certificate management
+  certificateUrl: { type: String }, // URL to downloadable certificate PDF
+  certificateFileName: { type: String },
+  
+  // Crime record tracking
+  crimeRecordStatus: { type: String, enum: ['yes', 'no'], default: null },
+  
+  // Certification tracking (how many times verified)
+  certificationCount: { type: Number, default: 0 },
+  
   createdAt: { type: Date, default: Date.now },
   
 }, { collection: 'blotter' });

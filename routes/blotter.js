@@ -24,6 +24,20 @@ const upload = multer({
   }
 });
 
+// For certificate PDF uploads
+const certificateStorage = multer.memoryStorage();
+const certificateUpload = multer({
+  storage: certificateStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (ext !== '.pdf') {
+      return cb(new Error('Only PDF files are allowed for certificates'));
+    }
+    cb(null, true);
+  }
+});
+
 // Configure cloudinary (prefer environment variables, fallback to provided values)
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dtormrsdd',
@@ -255,6 +269,103 @@ newAttachments.push({
     res.json(b);
   } catch (err) {
     console.error('[blotter.patch] error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Upload certificate PDF for a blotter (admin only)
+router.post('/:id/upload-certificate', certificateUpload.single('certificate'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    // Store certificate in /uploads/certificates
+    const dir = path.join(__dirname, '../uploads/certificates');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    
+    const filename = `cert_${Date.now()}_${req.file.originalname}`;
+    const filepath = path.join(dir, filename);
+    fs.writeFileSync(filepath, req.file.buffer);
+    
+    const certificateUrl = `/uploads/certificates/${filename}`;
+    const b = await Blotter.findByIdAndUpdate(
+      req.params.id,
+      { 
+        certificateUrl,
+        certificateFileName: req.file.originalname
+      },
+      { new: true }
+    );
+    
+    if (!b) return res.status(404).json({ error: 'Blotter not found' });
+    res.json(b);
+  } catch (err) {
+    console.error('[blotter.upload-certificate] error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Set crime record status (admin only)
+router.post('/:id/set-crime-record', async (req, res) => {
+  try {
+    const { crimeRecordStatus } = req.body;
+    
+    if (!['yes', 'no'].includes(crimeRecordStatus)) {
+      return res.status(400).json({ error: 'Invalid crime record status. Must be "yes" or "no"' });
+    }
+    
+    const b = await Blotter.findByIdAndUpdate(
+      req.params.id,
+      { crimeRecordStatus },
+      { new: true }
+    );
+    
+    if (!b) return res.status(404).json({ error: 'Blotter not found' });
+    res.json(b);
+  } catch (err) {
+    console.error('[blotter.set-crime-record] error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Increment certification count (when verified)
+router.post('/:id/increment-certification', async (req, res) => {
+  try {
+    const b = await Blotter.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { certificationCount: 1 } },
+      { new: true }
+    );
+    
+    if (!b) return res.status(404).json({ error: 'Blotter not found' });
+    res.json(b);
+  } catch (err) {
+    console.error('[blotter.increment-certification] error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update payment status
+router.post('/:id/update-payment', async (req, res) => {
+  try {
+    const { paymentMethod, paymentStatus, paymentProofUrl } = req.body;
+    
+    const updates = {};
+    if (paymentMethod) updates.paymentMethod = paymentMethod;
+    if (paymentStatus) updates.paymentStatus = paymentStatus;
+    if (paymentProofUrl) updates.paymentProofUrl = paymentProofUrl;
+    
+    const b = await Blotter.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true }
+    );
+    
+    if (!b) return res.status(404).json({ error: 'Blotter not found' });
+    res.json(b);
+  } catch (err) {
+    console.error('[blotter.update-payment] error', err);
     res.status(500).json({ error: err.message });
   }
 });
