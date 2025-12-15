@@ -12,10 +12,8 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/abisdb';
 // middleware
 // Allow local frontend during development and accept custom headers used by the app.
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://abis-frontend.onrender.com', 'https://abis-backend.onrender.com', 'https://abis-uj68.vercel.app', 'https://abis-frontend.vercel.app']
-    : ['http://localhost:3000'],
-  credentials: true,
+  origin: '*', // Temporarily allow all origins for debugging
+  credentials: false,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-key', 'x-public-token'],
   exposedHeaders: ['Content-Disposition']
