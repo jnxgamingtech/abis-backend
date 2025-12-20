@@ -46,13 +46,13 @@ cloudinary.config({
   secure: true
 });
 
-// create blotter report (admin only)
-router.post('/', adminKeyMiddleware, upload.array('attachments', 3), async (req, res) => {
+// create blotter report (public users can submit)
+router.post('/', upload.array('attachments', 3), async (req, res) => {
   try {
-    const { title, description, reporterName, reporterContact, incidentDate } = req.body;
+    const { title, description, reporterName, reporterContact, incidentDate, showReporter } = req.body;
 
     console.log('[blotter.post] received body:', {
-      title, description, reporterName, reporterContact, incidentDate,
+      title, description, reporterName, reporterContact, incidentDate, showReporter,
       fileCount: (req.files || []).length
     });
 
@@ -100,10 +100,10 @@ router.post('/', adminKeyMiddleware, upload.array('attachments', 3), async (req,
 
     // generate a short public token for reporter to view their report
     const publicToken = crypto.randomBytes(10).toString('hex');
-    const status = req.body.status || 'pending';
+    const status = 'pending'; // All new blotter reports start as pending
 
-    // allow submitter to optionally set showReporter (but default to false)
-    const showReporter = req.body.showReporter === 'true' || req.body.showReporter === true ? true : false;
+    // allow submitter to optionally set showReporter (default to false)
+    const isShowReporter = showReporter === 'true' || showReporter === true ? true : false;
 
     const blot = new Blotter({ 
       title, 
@@ -114,7 +114,7 @@ router.post('/', adminKeyMiddleware, upload.array('attachments', 3), async (req,
       attachments, 
       publicToken, 
       status, 
-      showReporter 
+      showReporter: isShowReporter
     });
 
     console.log('[blotter.post] DEBUG - blot object before save:', JSON.stringify(blot, null, 2));
@@ -123,7 +123,7 @@ router.post('/', adminKeyMiddleware, upload.array('attachments', 3), async (req,
 
     console.log('[blotter.post] DEBUG - blot object after save:', JSON.stringify(blot, null, 2));
 
-    // return the publicToken so reporter can save it for tracking
+    // return the publicToken and ID so reporter can save it for tracking
     res.status(201).json({ id: blot._id, publicToken, ...blot.toObject() });
   } catch (err) {
     // Provide clearer error codes for upload validation errors
