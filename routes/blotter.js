@@ -56,6 +56,11 @@ router.post('/', upload.array('attachments', 3), async (req, res) => {
       fileCount: (req.files || []).length
     });
 
+    // Validation
+    if (!title || !description) {
+      return res.status(400).json({ error: 'Title and description are required' });
+    }
+
     let attachments = [];
     if (req.files && req.files.length) {
       // Upload each file buffer to Cloudinary
@@ -75,9 +80,6 @@ router.post('/', upload.array('attachments', 3), async (req, res) => {
         });
 
         console.log('[blotter.post] uploaded to cloudinary:', result.secure_url);
-        console.log('[blotter.post] DEBUG - result object keys:', Object.keys(result));
-        console.log('[blotter.post] DEBUG - result.secure_url:', result.secure_url);
-        console.log('[blotter.post] DEBUG - result.public_id:', result.public_id);
 
         // Build attachment object
         const attachmentObj = {
@@ -90,13 +92,13 @@ router.post('/', upload.array('attachments', 3), async (req, res) => {
           format: result.format
         };
 
-        console.log('[blotter.post] DEBUG - attachmentObj:', JSON.stringify(attachmentObj, null, 2));
+        console.log('[blotter.post] attachment:', JSON.stringify(attachmentObj, null, 2));
         
         attachments.push(attachmentObj);
       }
     }
 
-    console.log('[blotter.post] DEBUG - final attachments array:', JSON.stringify(attachments, null, 2));
+    console.log('[blotter.post] final attachments array:', JSON.stringify(attachments, null, 2));
 
     // generate a short public token for reporter to view their report
     const publicToken = crypto.randomBytes(10).toString('hex');
@@ -105,36 +107,52 @@ router.post('/', upload.array('attachments', 3), async (req, res) => {
     // allow submitter to optionally set showReporter (default to false)
     const isShowReporter = showReporter === 'true' || showReporter === true ? true : false;
 
+    // Parse incidentDate only if provided
+    let parsedIncidentDate = incidentDate ? new Date(incidentDate) : new Date();
+
     const blot = new Blotter({ 
       title, 
       description, 
-      reporterName, 
-      reporterContact, 
-      incidentDate, 
+      reporterName: reporterName || 'Anonymous', 
+      reporterContact: reporterContact || '', 
+      incidentDate: parsedIncidentDate, 
       attachments, 
       publicToken, 
       status, 
       showReporter: isShowReporter
     });
 
-    console.log('[blotter.post] DEBUG - blot object before save:', JSON.stringify(blot, null, 2));
+    console.log('[blotter.post] creating blotter:', JSON.stringify(blot, null, 2));
 
     await blot.save();
 
-    console.log('[blotter.post] DEBUG - blot object after save:', JSON.stringify(blot, null, 2));
+    console.log('[blotter.post] blotter saved with ID:', blot._id);
 
     // return the publicToken and ID so reporter can save it for tracking
     res.status(201).json({ id: blot._id, publicToken, ...blot.toObject() });
   } catch (err) {
     // Provide clearer error codes for upload validation errors
-    console.error('[blotter.post] error', err);
+    console.error('[blotter.post] ERROR:', {
+      message: err.message,
+      code: err.code,
+      stack: err.stack,
+      validationError: err.errors ? Object.keys(err.errors) : null
+    });
+    
     if (err && err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ error: 'File too large. Maximum size is 2MB per file.' });
     }
     if (err && /Unsupported file type/.test(err.message || '')) {
       return res.status(400).json({ error: err.message });
     }
-    res.status(500).json({ error: err.message });
+    
+    // MongoDB validation errors
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map(e => e.message).join(', ');
+      return res.status(400).json({ error: 'Validation error: ' + messages });
+    }
+    
+    res.status(500).json({ error: err.message || 'Internal server error' });
   }
 });
 

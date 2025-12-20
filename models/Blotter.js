@@ -41,7 +41,7 @@ const BlotterSchema = new Schema({
   certificateFileName: { type: String },
   
   // Crime record tracking
-  crimeRecordStatus: { type: String, enum: ['yes', 'no'], default: null },
+  crimeRecordStatus: { type: String, enum: ['yes', 'no', null], default: null },
   
   // Certification tracking (how many times verified)
   certificationCount: { type: Number, default: 0 },
